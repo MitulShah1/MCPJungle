@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -32,5 +33,6 @@ func (c *ServerConfig) BeforeSave(tx *gorm.DB) (err error) {
 	if c.Mode != ModeDev && c.Mode != ModeProd {
 		return fmt.Errorf("invalid server mode: %s", c.Mode)
 	}
+
 	return nil
 }

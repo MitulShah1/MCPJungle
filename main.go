@@ -3,15 +3,18 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/mcpjungle/mcpjungle/cmd"
 	"os"
+
+	"github.com/mcpjungle/mcpjungle/cmd"
 )
 
 func main() {
-	if err := cmd.Execute(); err != nil {
-		if !errors.Is(err, cmd.SilentErr) {
+	err := cmd.Execute()
+	if err != nil {
+		if !errors.Is(err, cmd.ErrSilent) {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
+
 		os.Exit(1)
 	}
 }

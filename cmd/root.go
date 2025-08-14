@@ -2,19 +2,19 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
+	"net/http"
+
 	"github.com/mcpjungle/mcpjungle/client"
 	"github.com/mcpjungle/mcpjungle/cmd/config"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 // TODO: refactor: all commands should use cmd.Print..() instead of fmt.Print..() statements to produce outputs.
 
-// SilentErr is a sentinel error used to indicate that the command should not print an error message
+// ErrSilent is a sentinel error used to indicate that the command should not print an error message
 // This is useful when we handle error printing internally but want main to exit with a non-zero status.
 // See https://github.com/spf13/cobra/issues/914#issuecomment-548411337
-var SilentErr = errors.New("SilentErr")
+var ErrSilent = errors.New("SilentErr")
 
 var registryServerURL string
 
@@ -40,13 +40,14 @@ func Execute() error {
 	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
 		cmd.Println(err)
 		cmd.Println(cmd.UsageString())
-		return SilentErr
+
+		return ErrSilent
 	})
 
 	rootCmd.PersistentFlags().StringVar(
 		&registryServerURL,
 		"registry",
-		fmt.Sprintf("http://127.0.0.1:%s", BindPortDefault),
+		"http://127.0.0.1:"+BindPortDefault,
 		"Base URL of the MCPJungle registry server",
 	)
 

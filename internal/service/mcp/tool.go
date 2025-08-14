@@ -1,30 +1,38 @@
+// Package mcp provides MCP (Model Context Protocol) service functionality.
 package mcp
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcpjungle/mcpjungle/internal/model"
 	"github.com/mcpjungle/mcpjungle/pkg/types"
-	"log"
 )
 
 // ListTools returns all tools registered in the registry.
 func (m *MCPService) ListTools() ([]model.Tool, error) {
 	var tools []model.Tool
-	if err := m.db.Find(&tools).Error; err != nil {
+
+	err := m.db.Find(&tools).Error
+	if err != nil {
 		return nil, err
 	}
 	// prepend server name to tool names to ensure we only return the unique names of tools to user
 	for i := range tools {
 		var s model.McpServer
-		if err := m.db.First(&s, "id = ?", tools[i].ServerID).Error; err != nil {
+
+		err := m.db.First(&s, "id = ?", tools[i].ServerID).Error
+		if err != nil {
 			return nil, fmt.Errorf("failed to get server for tool %s: %w", tools[i].Name, err)
 		}
+
 		tools[i].Name = mergeServerToolNames(s.Name, tools[i].Name)
 	}
+
 	return tools, nil
 }
 
@@ -69,6 +77,7 @@ func (m *MCPService) GetTool(name string) (*model.Tool, error) {
 	}
 	// set the tool name back to its canonical form
 	tool.Name = name
+
 	return &tool, nil
 }
 
@@ -78,6 +87,7 @@ func (m *MCPService) InvokeTool(ctx context.Context, name string, args map[strin
 	if !ok {
 		return nil, fmt.Errorf("invalid input: tool name does not contain a %s separator", serverToolNameSep)
 	}
+
 	serverModel, err := m.GetMcpServer(serverName)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -115,15 +125,18 @@ func (m *MCPService) InvokeTool(ctx context.Context, name string, args map[strin
 	contentList := make([]map[string]any, 0, len(callToolResp.Content))
 	for _, item := range callToolResp.Content {
 		var m map[string]any
+
 		serialized, err := json.Marshal(item)
 		if err != nil {
-			// TODO
+			// TODO: handle JSON marshaling error for tool invoke result content
 			continue
 		}
+
 		if err = json.Unmarshal(serialized, &m); err != nil {
-			// TODO
+			// TODO: handle JSON unmarshaling error for tool invoke result content
 			continue
 		}
+
 		contentList = append(contentList, m)
 	}
 
@@ -132,6 +145,7 @@ func (m *MCPService) InvokeTool(ctx context.Context, name string, args map[strin
 		IsError: callToolResp.IsError,
 		Content: contentList,
 	}
+
 	return result, nil
 }
 
@@ -209,15 +223,20 @@ func (m *MCPService) setToolsEnabled(entity string, enabled bool) ([]string, err
 		return nil, fmt.Errorf("failed to get tools for server %s: %w", entity, err)
 	}
 
-	var changedToolNames []string
+	changedToolNames := make([]string, 0, len(tools))
+
 	for i := range tools {
 		if tools[i].Enabled == enabled {
 			continue // no change needed
 		}
+
 		tools[i].Enabled = enabled
-		if err := m.db.Save(&tools[i]).Error; err != nil {
+
+		err := m.db.Save(&tools[i]).Error
+		if err != nil {
 			return nil, fmt.Errorf("failed to set tool %s enabled=%t: %w", tools[i].Name, enabled, err)
 		}
+
 		canonicalToolName := mergeServerToolNames(s.Name, tools[i].Name)
 
 		if enabled {
@@ -246,30 +265,38 @@ func (m *MCPService) registerServerTools(ctx context.Context, s *model.McpServer
 	if err != nil {
 		return fmt.Errorf("failed to fetch tools from MCP server %s: %w", s.Name, err)
 	}
-	for _, tool := range resp.Tools {
-		canonicalToolName := mergeServerToolNames(s.Name, tool.GetName())
+
+	for i := range resp.Tools {
+		canonicalToolName := mergeServerToolNames(s.Name, resp.Tools[i].GetName())
 
 		// extracting json schema is currently on best-effort basis
 		// if it fails, we log the error and continue with the next tool
-		jsonSchema, _ := json.Marshal(tool.InputSchema)
+		jsonSchema, err := json.Marshal(resp.Tools[i].InputSchema)
+		if err != nil {
+			log.Printf("[ERROR] failed to marshal input schema for tool %s: %v", resp.Tools[i].GetName(), err)
+			continue
+		}
 
 		t := &model.Tool{
 			ServerID:    s.ID,
-			Name:        tool.GetName(),
-			Description: tool.Description,
+			Name:        resp.Tools[i].GetName(),
+			Description: resp.Tools[i].Description,
 			InputSchema: jsonSchema,
 		}
-		if err := m.db.Create(t).Error; err != nil {
+
+		err = m.db.Create(t).Error
+		if err != nil {
 			// If registration of a tool fails, we should not fail the entire server registration.
 			// Instead, continue with the next tool.
 			log.Printf("[ERROR] failed to register tool %s in DB: %v", canonicalToolName, err)
 		} else {
 			// Set tool name to include the server name prefix to make it recognizable by MCPJungle
 			// then add the tool to the MCP proxy server
-			tool.Name = canonicalToolName
-			m.mcpProxyServer.AddTool(tool, m.mcpProxyToolCallHandler)
+			resp.Tools[i].Name = canonicalToolName
+			m.mcpProxyServer.AddTool(resp.Tools[i], m.mcpProxyToolCallHandler)
 		}
 	}
+
 	return nil
 }
 
@@ -289,10 +316,11 @@ func (m *MCPService) deregisterServerTools(s *model.McpServer) error {
 	}
 
 	// delete tools from MCP proxy server
-	toolNames := make([]string, len(tools), len(tools))
-	for i, tool := range tools {
-		toolNames[i] = tool.Name
+	toolNames := make([]string, len(tools))
+	for i := range tools {
+		toolNames[i] = tools[i].Name
 	}
+
 	m.mcpProxyServer.DeleteTools(toolNames...)
 
 	return nil

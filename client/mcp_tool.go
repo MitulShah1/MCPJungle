@@ -1,17 +1,20 @@
+// Package client provides HTTP client functionality for interacting with MCPJungle API.
 package client
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"io"
 	"net/http"
+
+	"github.com/mcpjungle/mcpjungle/pkg/types"
 )
 
 // ListTools fetches the list of tools, optionally filtered by server name.
 func (c *Client) ListTools(server string) ([]*types.Tool, error) {
 	u, _ := c.constructAPIEndpoint("/tools")
+
 	req, _ := c.newRequest(http.MethodGet, u, nil)
 	if server != "" {
 		q := req.URL.Query()
@@ -23,6 +26,7 @@ func (c *Client) ListTools(server string) ([]*types.Tool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to %s: %w", req.URL.String(), err)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -33,12 +37,14 @@ func (c *Client) ListTools(server string) ([]*types.Tool, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tools); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return tools, nil
 }
 
 // EnableTools enables a tool or all tools provided by an MCP server.
 func (c *Client) EnableTools(name string) ([]string, error) {
 	u, _ := c.constructAPIEndpoint("/tools/enable")
+
 	req, err := c.newRequest(http.MethodPost, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -63,12 +69,14 @@ func (c *Client) EnableTools(name string) ([]string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tools); err != nil {
 		return nil, fmt.Errorf("failed to decode API response: %w", err)
 	}
+
 	return tools, nil
 }
 
 // DisableTools disables a tool or all tools provided by an MCP server.
 func (c *Client) DisableTools(name string) ([]string, error) {
 	u, _ := c.constructAPIEndpoint("/tools/disable")
+
 	req, err := c.newRequest(http.MethodPost, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -93,6 +101,7 @@ func (c *Client) DisableTools(name string) ([]string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tools); err != nil {
 		return nil, fmt.Errorf("failed to decode API response: %w", err)
 	}
+
 	return tools, nil
 }
 
@@ -119,6 +128,7 @@ func (c *Client) GetTool(name string) (*types.Tool, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tool); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return &tool, nil
 }
 
@@ -132,14 +142,21 @@ func (c *Client) InvokeTool(name string, input map[string]any) (*types.ToolInvok
 	for k, v := range input {
 		payload[k] = v
 	}
+
 	payload["name"] = name
 
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
 	u, _ := c.constructAPIEndpoint("/tools/invoke")
+
 	req, err := c.newRequest(http.MethodPost, u, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)

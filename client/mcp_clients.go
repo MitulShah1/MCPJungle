@@ -1,12 +1,14 @@
+// Package client provides HTTP client functionality for interacting with MCPJungle API.
 package client
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"io"
 	"net/http"
+
+	"github.com/mcpjungle/mcpjungle/pkg/types"
 )
 
 func (c *Client) ListMcpClients() ([]types.McpClient, error) {
@@ -70,6 +72,7 @@ func (c *Client) CreateMcpClient(mcpClient *types.McpClient) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)

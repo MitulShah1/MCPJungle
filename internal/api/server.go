@@ -1,20 +1,31 @@
+// Package api provides HTTP API handlers for MCPJungle.
 package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mcpjungle/mcpjungle/internal/model"
 	"github.com/mcpjungle/mcpjungle/internal/service/config"
 	"github.com/mcpjungle/mcpjungle/internal/service/mcp"
-	"github.com/mcpjungle/mcpjungle/internal/service/mcp_client"
+	"github.com/mcpjungle/mcpjungle/internal/service/mcpclient"
 	"github.com/mcpjungle/mcpjungle/internal/service/user"
-	"net/http"
-	"strings"
 )
 
 const V0PathPrefix = "/api/v0"
+
+// Context keys for request context
+type contextKey string
+
+const (
+	modeContextKey   contextKey = "mode"
+	clientContextKey contextKey = "client"
+)
 
 type ServerOptions struct {
 	// Port is the HTTP ports to bind the server to
@@ -22,7 +33,7 @@ type ServerOptions struct {
 
 	MCPProxyServer   *server.MCPServer
 	MCPService       *mcp.MCPService
-	MCPClientService *mcp_client.McpClientService
+	MCPClientService *mcpclient.McpClientService
 	ConfigService    *config.ServerConfigService
 	UserService      *user.UserService
 }
@@ -34,7 +45,7 @@ type Server struct {
 
 	mcpProxyServer   *server.MCPServer
 	mcpService       *mcp.MCPService
-	mcpClientService *mcp_client.McpClientService
+	mcpClientService *mcpclient.McpClientService
 
 	configService *config.ServerConfigService
 	userService   *user.UserService
@@ -46,6 +57,7 @@ func NewServer(opts *ServerOptions) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	s := &Server{
 		port:             opts.Port,
 		router:           r,
@@ -55,6 +67,7 @@ func NewServer(opts *ServerOptions) (*Server, error) {
 		configService:    opts.ConfigService,
 		userService:      opts.UserService,
 	}
+
 	return s, nil
 }
 
@@ -64,6 +77,7 @@ func (s *Server) IsInitialized() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get server config: %w", err)
 	}
+
 	return c.Initialized, nil
 }
 
@@ -73,13 +87,16 @@ func (s *Server) GetMode() (model.ServerMode, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to check if server is initialized: %w", err)
 	}
+
 	if !ok {
-		return "", fmt.Errorf("server is not initialized")
+		return "", errors.New("server is not initialized")
 	}
+
 	c, err := s.configService.GetConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to get server config: %w", err)
 	}
+
 	return c.Mode, nil
 }
 
@@ -90,14 +107,17 @@ func (s *Server) InitDev() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize server config in dev mode: %w", err)
 	}
+
 	return nil
 }
 
 // Start runs the Gin server (blocking call)
 func (s *Server) Start() error {
-	if err := s.router.Run(":" + s.port); err != nil {
+	err := s.router.Run(":" + s.port)
+	if err != nil {
 		return fmt.Errorf("failed to run the server: %w", err)
 	}
+
 	return nil
 }
 
@@ -109,6 +129,7 @@ func requireInitialized(configService *config.ServerConfigService) gin.HandlerFu
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "server not initialized"})
 			return
 		}
+
 		c.Next()
 	}
 }
@@ -122,23 +143,29 @@ func checkAuthForAPIAccess(configService *config.ServerConfigService, userServic
 			c.AbortWithStatusJSON(
 				http.StatusServiceUnavailable, gin.H{"error": "failed to fetch server config while checking auth"},
 			)
+
 			return
 		}
+
 		if cfg.Mode == model.ModeDev {
 			c.Next()
 			return
 		}
+
 		authHeader := c.GetHeader("Authorization")
+
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing access token"})
 			return
 		}
+
 		_, err = userService.VerifyAdminToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid access token"})
 			return
 		}
+
 		c.Next()
 	}
 }
@@ -148,7 +175,7 @@ func checkAuthForAPIAccess(configService *config.ServerConfigService, userServic
 // In development mode, mcp clients do not require auth to access the MCP proxy.
 func checkAuthForMcpProxyAccess(
 	configService *config.ServerConfigService,
-	mcpClientService *mcp_client.McpClientService,
+	mcpClientService *mcpclient.McpClientService,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cfg, err := configService.GetConfig()
@@ -156,12 +183,13 @@ func checkAuthForMcpProxyAccess(
 			c.AbortWithStatusJSON(
 				http.StatusServiceUnavailable, gin.H{"error": "failed to fetch server config while checking mcp auth"},
 			)
+
 			return
 		}
 
 		// the gin context doesn't get passed down to the MCP proxy server, so we need to
 		// set values in the underlying request's context to be able to access them from proxy.
-		ctx := context.WithValue(c.Request.Context(), "mode", cfg.Mode)
+		ctx := context.WithValue(c.Request.Context(), modeContextKey, cfg.Mode)
 		c.Request = c.Request.WithContext(ctx)
 
 		if cfg.Mode == model.ModeDev {
@@ -170,11 +198,13 @@ func checkAuthForMcpProxyAccess(
 		}
 
 		authHeader := c.GetHeader("Authorization")
+
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing MCP client access token"})
 			return
 		}
+
 		client, err := mcpClientService.GetClientByToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid MCP client token"})
@@ -182,7 +212,7 @@ func checkAuthForMcpProxyAccess(
 		}
 
 		// inject the authenticated MCP client in context for the proxy to use
-		ctx = context.WithValue(c.Request.Context(), "client", client)
+		ctx = context.WithValue(c.Request.Context(), clientContextKey, client)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -198,15 +228,19 @@ func requireServerMode(configService *config.ServerConfigService, m model.Server
 			c.AbortWithStatusJSON(
 				http.StatusServiceUnavailable, gin.H{"error": "failed to fetch server config while checking mode"},
 			)
+
 			return
 		}
+
 		if cfg.Mode != m {
 			c.AbortWithStatusJSON(
 				http.StatusForbidden,
 				gin.H{"error": fmt.Sprintf("this request is only allowed in %s mode", m)},
 			)
+
 			return
 		}
+
 		c.Next()
 	}
 }
@@ -230,44 +264,42 @@ func newRouter(opts *ServerOptions) (*gin.Engine, error) {
 	checkMcpClientAuth := checkAuthForMcpProxyAccess(opts.ConfigService, opts.MCPClientService)
 
 	// Set up the MCP proxy server on /mcp
-	streamableHttpServer := server.NewStreamableHTTPServer(opts.MCPProxyServer)
+	streamableHTTPServer := server.NewStreamableHTTPServer(opts.MCPProxyServer)
 	r.Any(
 		"/mcp",
 		requireInit,
 		checkMcpClientAuth,
-		gin.WrapH(streamableHttpServer),
+		gin.WrapH(streamableHTTPServer),
 	)
 
 	// Setup API endpoints
 	apiV0 := r.Group(V0PathPrefix, requireInit, checkUserAuth)
-	{
-		apiV0.POST("/servers", registerServerHandler(opts.MCPService))
-		apiV0.DELETE("/servers/:name", deregisterServerHandler(opts.MCPService))
-		apiV0.GET("/servers", listServersHandler(opts.MCPService))
+	apiV0.POST("/servers", registerServerHandler(opts.MCPService))
+	apiV0.DELETE("/servers/:name", deregisterServerHandler(opts.MCPService))
+	apiV0.GET("/servers", listServersHandler(opts.MCPService))
 
-		apiV0.GET("/tools", listToolsHandler(opts.MCPService))
-		apiV0.POST("/tools/invoke", invokeToolHandler(opts.MCPService))
-		apiV0.POST("/tools/enable", enableToolsHandler(opts.MCPService))
-		apiV0.POST("/tools/disable", disableToolsHandler(opts.MCPService))
+	apiV0.GET("/tools", listToolsHandler(opts.MCPService))
+	apiV0.POST("/tools/invoke", invokeToolHandler(opts.MCPService))
+	apiV0.POST("/tools/enable", enableToolsHandler(opts.MCPService))
+	apiV0.POST("/tools/disable", disableToolsHandler(opts.MCPService))
 
-		apiV0.GET("/tool", getToolHandler(opts.MCPService))
+	apiV0.GET("/tool", getToolHandler(opts.MCPService))
 
-		apiV0.GET(
-			"/clients",
-			requireServerMode(opts.ConfigService, model.ModeProd),
-			listMcpClientsHandler(opts.MCPClientService),
-		)
-		apiV0.POST(
-			"/clients",
-			requireServerMode(opts.ConfigService, model.ModeProd),
-			createMcpClientHandler(opts.MCPClientService),
-		)
-		apiV0.DELETE(
-			"/clients/:name",
-			requireServerMode(opts.ConfigService, model.ModeProd),
-			deleteMcpClientHandler(opts.MCPClientService),
-		)
-	}
+	apiV0.GET(
+		"/clients",
+		requireServerMode(opts.ConfigService, model.ModeProd),
+		listMcpClientsHandler(opts.MCPClientService),
+	)
+	apiV0.POST(
+		"/clients",
+		requireServerMode(opts.ConfigService, model.ModeProd),
+		createMcpClientHandler(opts.MCPClientService),
+	)
+	apiV0.DELETE(
+		"/clients/:name",
+		requireServerMode(opts.ConfigService, model.ModeProd),
+		deleteMcpClientHandler(opts.MCPClientService),
+	)
 
 	return r, nil
 }

@@ -1,17 +1,20 @@
+// Package client provides HTTP client functionality for interacting with MCPJungle API.
 package client
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"io"
 	"net/http"
+
+	"github.com/mcpjungle/mcpjungle/pkg/types"
 )
 
 // RegisterServer registers a new MCP server with the registry.
 func (c *Client) RegisterServer(server *types.RegisterServerInput) (*types.McpServer, error) {
 	u, _ := c.constructAPIEndpoint("/servers")
+
 	body, err := json.Marshal(server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize server data into JSON: %w", err)
@@ -21,6 +24,7 @@ func (c *Client) RegisterServer(server *types.RegisterServerInput) (*types.McpSe
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -38,12 +42,14 @@ func (c *Client) RegisterServer(server *types.RegisterServerInput) (*types.McpSe
 	if err := json.NewDecoder(resp.Body).Decode(&registeredServer); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return &registeredServer, nil
 }
 
 // ListServers fetches the list of registered servers.
 func (c *Client) ListServers() ([]*types.McpServer, error) {
 	u, _ := c.constructAPIEndpoint("/servers")
+
 	req, err := c.newRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -64,6 +70,7 @@ func (c *Client) ListServers() ([]*types.McpServer, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&servers); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return servers, nil
 }
 
@@ -82,5 +89,6 @@ func (c *Client) DeregisterServer(name string) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status from server: %s, body: %s", resp.Status, body)
 	}
+
 	return nil
 }

@@ -4,9 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 var invokeCmdInput string
@@ -29,6 +30,7 @@ func getTextContent(c map[string]any) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("text content item does not have a 'text' field: %v", c)
 	}
+
 	return textContent, nil
 }
 
@@ -37,6 +39,7 @@ func getImageContent(c map[string]any) ([]byte, string, error) {
 	if !ok {
 		return nil, "", fmt.Errorf("image content item does not have a valid 'data' field: %v", c)
 	}
+
 	mimeType, ok := c["mimeType"].(string)
 	if !ok {
 		return nil, "", fmt.Errorf("image content item does not have a valid 'mimeType' field: %v", c)
@@ -50,6 +53,7 @@ func getImageContent(c map[string]any) ([]byte, string, error) {
 
 	// Determine file extension from MIME type
 	ext := ".img"
+
 	switch mimeType {
 	case "image/png":
 		ext = ".png"
@@ -67,6 +71,7 @@ func getAudioContent(c map[string]any) ([]byte, string, error) {
 	if !ok {
 		return nil, "", fmt.Errorf("audio content item does not have a valid 'data' field: %v", c)
 	}
+
 	mimeType, ok := c["mimeType"].(string)
 	if !ok {
 		return nil, "", fmt.Errorf("audio content item does not have a valid 'mimeType' field: %v", c)
@@ -80,6 +85,7 @@ func getAudioContent(c map[string]any) ([]byte, string, error) {
 
 	// Determine file extension from MIME type
 	ext := ".audio"
+
 	switch mimeType {
 	case "audio/mpeg":
 		ext = ".mp3"
@@ -105,6 +111,7 @@ func runInvokeTool(cmd *cobra.Command, args []string) error {
 
 	if result.IsError {
 		fmt.Println("The tool returned an error:")
+
 		for k, v := range result.Meta {
 			fmt.Printf("%s: %v\n", k, v)
 		}
@@ -115,11 +122,13 @@ func runInvokeTool(cmd *cobra.Command, args []string) error {
 	// result Content needs to be printed regardless of whether the tool returned an error or not
 	// because it may contain useful information
 	fmt.Println()
+
 	for _, c := range result.Content {
 		cType, ok := c["type"]
 		if !ok {
 			return fmt.Errorf("content item does not have a 'type' field: %v", c)
 		}
+
 		fmt.Printf("[Content type: %s]\n", cType)
 
 		switch cType {
@@ -128,6 +137,7 @@ func runInvokeTool(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			fmt.Println(textContent)
 
 		case "image":
@@ -135,10 +145,12 @@ func runInvokeTool(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			filename := fmt.Sprintf("image_%d%s", time.Now().UnixNano(), ext)
-			if err := os.WriteFile(filename, imgData, 0644); err != nil {
+			if err := os.WriteFile(filename, imgData, 0o644); err != nil {
 				return fmt.Errorf("failed to write image to disk: %w", err)
 			}
+
 			fmt.Printf("[Image saved as %s]\n", filename)
 
 		case "audio":
@@ -146,10 +158,12 @@ func runInvokeTool(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			filename := fmt.Sprintf("audio_%d%s", time.Now().UnixNano(), ext)
-			if err := os.WriteFile(filename, audioData, 0644); err != nil {
+			if err := os.WriteFile(filename, audioData, 0o644); err != nil {
 				return fmt.Errorf("failed to write audio to disk: %w", err)
 			}
+
 			fmt.Printf("[Audio saved as %s]\n", filename)
 		}
 	}

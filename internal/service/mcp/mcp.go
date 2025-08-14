@@ -1,7 +1,9 @@
+// Package mcp provides MCP (Model Context Protocol) service functionality.
 package mcp
 
 import (
 	"fmt"
+
 	"github.com/mark3labs/mcp-go/server"
 	"gorm.io/gorm"
 )
@@ -20,8 +22,11 @@ func NewMCPService(db *gorm.DB, mcpProxyServer *server.MCPServer) (*MCPService, 
 		db:             db,
 		mcpProxyServer: mcpProxyServer,
 	}
-	if err := s.initMCPProxyServer(); err != nil {
+
+	err := s.initMCPProxyServer()
+	if err != nil {
 		return nil, fmt.Errorf("failed to initialize MCP proxy server: %w", err)
 	}
+
 	return s, nil
 }

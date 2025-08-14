@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 var createCmd = &cobra.Command{
@@ -51,6 +53,7 @@ func init() {
 func runCreateMcpClient(cmd *cobra.Command, args []string) error {
 	// convert the comma-separated list of allowed servers into a slice
 	allowList := make([]string, 0)
+
 	for _, s := range strings.Split(createMcpClientCmdAllowedServers, ",") {
 		trimmed := strings.TrimSpace(s)
 		if trimmed != "" {
@@ -68,8 +71,9 @@ func runCreateMcpClient(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if token == "" {
-		return fmt.Errorf("server returned an empty token, this was unexpected")
+		return errors.New("server returned an empty token, this was unexpected")
 	}
 
 	fmt.Printf("MCP client '%s' created successfully!\n", c.Name)

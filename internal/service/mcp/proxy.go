@@ -1,8 +1,10 @@
+// Package mcp provides MCP (Model Context Protocol) service functionality.
 package mcp
 
 import (
 	"context"
 	"fmt"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mcpjungle/mcpjungle/internal/model"
 )
@@ -14,20 +16,22 @@ func (m *MCPService) initMCPProxyServer() error {
 	if err != nil {
 		return fmt.Errorf("failed to list tools from DB: %w", err)
 	}
-	for _, tm := range tools {
-		if !tm.Enabled {
+
+	for i := range tools {
+		if !tools[i].Enabled {
 			// do not add disabled tools to the proxy
 			continue
 		}
 
 		// Add tool to the MCP proxy server
-		tool, err := convertToolModelToMcpObject(&tm)
+		tool, err := convertToolModelToMcpObject(&tools[i])
 		if err != nil {
-			return fmt.Errorf("failed to convert tool model to MCP object for tool %s: %w", tm.Name, err)
+			return fmt.Errorf("failed to convert tool model to MCP object for tool %s: %w", tools[i].Name, err)
 		}
 
 		m.mcpProxyServer.AddTool(tool, m.mcpProxyToolCallHandler)
 	}
+
 	return nil
 }
 
@@ -36,6 +40,7 @@ func (m *MCPService) initMCPProxyServer() error {
 // relaying the response back.
 func (m *MCPService) mcpProxyToolCallHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name := request.Params.Name
+
 	serverName, toolName, ok := splitServerToolName(name)
 	if !ok {
 		return nil, fmt.Errorf("invalid input: tool name does not contain a %s separator", serverToolNameSep)

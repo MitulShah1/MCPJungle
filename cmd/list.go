@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 var listCmd = &cobra.Command{
@@ -60,11 +61,13 @@ func runListTools(cmd *cobra.Command, args []string) error {
 		fmt.Println("There are no tools in the registry")
 		return nil
 	}
+
 	for i, t := range tools {
 		ed := "ENABLED"
 		if !t.Enabled {
 			ed = "DISABLED"
 		}
+
 		fmt.Printf("%d. %s  [%s]\n", i+1, t.Name, ed)
 		fmt.Println(t.Description)
 		fmt.Println()
@@ -85,6 +88,7 @@ func runListServers(cmd *cobra.Command, args []string) error {
 		fmt.Println("There are no MCP servers in the registry")
 		return nil
 	}
+
 	for i, s := range servers {
 		fmt.Printf("%d. %s\n", i+1, s.Name)
 
@@ -127,6 +131,7 @@ func runListMcpClients(cmd *cobra.Command, args []string) error {
 		fmt.Println("There are no MCP clients in the registry")
 		return nil
 	}
+
 	for i, c := range clients {
 		fmt.Printf("%d. %s\n", i+1, c.Name)
 

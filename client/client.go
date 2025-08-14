@@ -1,14 +1,16 @@
+// Package client provides HTTP client functionality for interacting with MCPJungle API.
 package client
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mcpjungle/mcpjungle/internal/api"
-	"github.com/mcpjungle/mcpjungle/internal/model"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/mcpjungle/mcpjungle/internal/api"
+	"github.com/mcpjungle/mcpjungle/internal/model"
 )
 
 // Client represents a client for interacting with the MCPJungle HTTP API
@@ -18,7 +20,7 @@ type Client struct {
 	httpClient  *http.Client
 }
 
-func NewClient(baseURL string, accessToken string, httpClient *http.Client) *Client {
+func NewClient(baseURL, accessToken string, httpClient *http.Client) *Client {
 	return &Client{
 		baseURL:     baseURL,
 		accessToken: accessToken,
@@ -39,6 +41,7 @@ func (c *Client) InitServer() (*InitServerResponse, error) {
 	}{
 		Mode: string(model.ModeProd),
 	}
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -59,6 +62,7 @@ func (c *Client) InitServer() (*InitServerResponse, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&initResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return &initResp, nil
 }
 
@@ -74,8 +78,10 @@ func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, 
 	if err != nil {
 		return nil, err
 	}
+
 	if c.accessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.accessToken)
 	}
+
 	return req, nil
 }

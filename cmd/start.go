@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/joho/godotenv"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mcpjungle/mcpjungle/internal/api"
@@ -10,11 +13,9 @@ import (
 	"github.com/mcpjungle/mcpjungle/internal/model"
 	"github.com/mcpjungle/mcpjungle/internal/service/config"
 	"github.com/mcpjungle/mcpjungle/internal/service/mcp"
-	"github.com/mcpjungle/mcpjungle/internal/service/mcp_client"
+	"github.com/mcpjungle/mcpjungle/internal/service/mcpclient"
 	"github.com/mcpjungle/mcpjungle/internal/service/user"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 const (
@@ -65,6 +66,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 
 	// connect to the DB and run migrations
 	dsn := os.Getenv(DBUrlEnvVar)
+
 	dbConn, err := db.NewDBConnection(dsn)
 	if err != nil {
 		return err
@@ -81,6 +83,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 	if port == "" {
 		port = os.Getenv(BindPortEnvVar)
 	}
+
 	if port == "" {
 		port = BindPortDefault
 	}
@@ -97,7 +100,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create MCP service: %v", err)
 	}
 
-	mcpClientService := mcp_client.NewMCPClientService(dbConn)
+	mcpClientService := mcpclient.NewMCPClientService(dbConn)
 
 	configService := config.NewServerConfigService(dbConn)
 	userService := user.NewUserService(dbConn)
@@ -111,6 +114,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 		ConfigService:    configService,
 		UserService:      userService,
 	}
+
 	s, err := api.NewServer(opts)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
@@ -118,6 +122,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 
 	// determine the server mode
 	desiredMode := model.ModeDev
+
 	envMode := os.Getenv(ServerModeEnvVar)
 	if envMode != "" {
 		// the value of the environment variable is allowed to be case-insensitive
@@ -132,6 +137,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 
 		desiredMode = model.ServerMode(envMode)
 	}
+
 	if startServerCmdProdEnabled {
 		// If the --prod flag is set, it gets precedence over the environment variable
 		desiredMode = model.ModeProd
@@ -142,6 +148,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to check if server is initialized: %v", err)
 	}
+
 	if ok {
 		// If the server is already initialized, then the mode supplied to this command (desired mode)
 		// must match the configured mode.
@@ -149,6 +156,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get server mode: %v", err)
 		}
+
 		if desiredMode != mode {
 			return fmt.Errorf(
 				"server is already initialized in %s mode, cannot start in %s mode",
@@ -159,7 +167,8 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 		// If server isn't already initialized and the desired mode is dev, silently initialize the server.
 		// Individual (dev mode) users need not worry about server initialization.
 		if desiredMode == model.ModeDev {
-			if err := s.InitDev(); err != nil {
+			err := s.InitDev()
+			if err != nil {
 				return fmt.Errorf("failed to initialize server in development mode: %v", err)
 			}
 		} else {
@@ -173,8 +182,9 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("MCPJungle HTTP server listening on :%s\n\n", port)
+
 	if err := s.Start(); err != nil {
-		return fmt.Errorf("failed to run the server: %v\n", err)
+		return fmt.Errorf("failed to run the server: %v", err)
 	}
 
 	return nil

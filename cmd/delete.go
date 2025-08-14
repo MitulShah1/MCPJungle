@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +27,13 @@ func init() {
 
 func runDeleteMcpClient(cmd *cobra.Command, args []string) error {
 	name := args[0]
-	if err := apiClient.DeleteMcpClient(name); err != nil {
+
+	err := apiClient.DeleteMcpClient(name)
+	if err != nil {
 		return fmt.Errorf("failed to delete the client: %w", err)
 	}
+
 	fmt.Printf("MCP client '%s' deleted successfully (if it existed)!\n", name)
+
 	return nil
 }

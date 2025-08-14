@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/mcpjungle/mcpjungle/cmd/config"
 	"github.com/spf13/cobra"
 )
@@ -20,13 +22,14 @@ func init() {
 
 func runInitServer(cmd *cobra.Command, args []string) error {
 	fmt.Println("Initializing the MCPJungle Server in Production Mode...")
+
 	resp, err := apiClient.InitServer()
 	if err != nil {
 		return fmt.Errorf("failed to initialize the server: %w", err)
 	}
 
 	if resp.AdminAccessToken == "" {
-		return fmt.Errorf("server initialization failed: no admin access token received")
+		return errors.New("server initialization failed: no admin access token received")
 	}
 
 	// Create new client configuration
@@ -41,8 +44,10 @@ func runInitServer(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get client configuration path: %w", err)
 	}
+
 	fmt.Println("Your Admin access token has been saved to", cfgPath)
 
 	fmt.Println("All done!")
+
 	return nil
 }

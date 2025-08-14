@@ -18,17 +18,22 @@ func init() {
 
 func runDisableTools(cmd *cobra.Command, args []string) error {
 	name := args[0]
+
 	toolsDisabled, err := apiClient.DisableTools(name)
 	if err != nil {
 		return err
 	}
+
 	if len(toolsDisabled) == 1 {
 		cmd.Printf("MCP tool '%s' disabled successfully!\n", toolsDisabled[0])
 		return nil
 	}
+
 	cmd.Println("Following MCP tools have been disabled successfully:")
+
 	for _, tool := range toolsDisabled {
 		cmd.Printf("- %s\n", tool)
 	}
+
 	return nil
 }

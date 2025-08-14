@@ -1,11 +1,13 @@
+// Package cmd provides command-line interface functionality for MCPJungle.
 package cmd
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"slices"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 var usageCmd = &cobra.Command{
@@ -35,6 +37,7 @@ func runGetToolUsage(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println("Input Parameters:")
+
 	for k, v := range t.InputSchema.Properties {
 		requiredOrOptional := "optional"
 		if slices.Contains(t.InputSchema.Required, k) {
@@ -53,6 +56,7 @@ func runGetToolUsage(cmd *cobra.Command, args []string) error {
 		} else {
 			fmt.Println(string(j))
 		}
+
 		fmt.Println(boundary)
 
 		fmt.Println()

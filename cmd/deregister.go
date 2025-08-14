@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -19,9 +20,12 @@ func init() {
 
 func runDeregisterMCPServer(cmd *cobra.Command, args []string) error {
 	server := args[0]
-	if err := apiClient.DeregisterServer(server); err != nil {
+
+	err := apiClient.DeregisterServer(server)
+	if err != nil {
 		return fmt.Errorf("failed to deregister MCP server %s: %w", server, err)
 	}
+
 	fmt.Printf("Successfully deregistered MCP server %s\n", server)
 	fmt.Println("The tools provided by this server have also been deregistered.")
 	// TODO: Output the list of tools that were deregistered.

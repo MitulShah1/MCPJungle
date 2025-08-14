@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -21,17 +22,22 @@ func init() {
 
 func runEnableTools(cmd *cobra.Command, args []string) error {
 	name := args[0]
+
 	toolsEnabled, err := apiClient.EnableTools(name)
 	if err != nil {
 		return fmt.Errorf("failed to enable %s: %w", name, err)
 	}
+
 	if len(toolsEnabled) == 1 {
 		cmd.Printf("MCP tool '%s' enabled successfully!\n", toolsEnabled[0])
 		return nil
 	}
+
 	cmd.Println("Following MCP tools have been enabled successfully:")
+
 	for _, tool := range toolsEnabled {
 		cmd.Printf("- %s\n", tool)
 	}
+
 	return nil
 }

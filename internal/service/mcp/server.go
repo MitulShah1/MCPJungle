@@ -1,8 +1,10 @@
+// Package mcp provides MCP (Model Context Protocol) service functionality.
 package mcp
 
 import (
 	"context"
 	"fmt"
+
 	"github.com/mcpjungle/mcpjungle/internal/model"
 )
 
@@ -29,6 +31,7 @@ func (m *MCPService) RegisterMcpServer(ctx context.Context, s *model.McpServer) 
 	if err = m.registerServerTools(ctx, s, mcpClient); err != nil {
 		return fmt.Errorf("failed to register tools for MCP server %s: %w", s.Name, err)
 	}
+
 	return nil
 }
 
@@ -41,6 +44,7 @@ func (m *MCPService) DeregisterMcpServer(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get MCP server %s from DB: %w", name, err)
 	}
+
 	if err := m.deregisterServerTools(s); err != nil {
 		return fmt.Errorf(
 			"failed to deregister tools for server %s, cannot proceed with server deregistration: %w",
@@ -48,26 +52,34 @@ func (m *MCPService) DeregisterMcpServer(name string) error {
 			err,
 		)
 	}
+
 	if err := m.db.Unscoped().Delete(s).Error; err != nil {
 		return fmt.Errorf("failed to deregister server %s: %w", name, err)
 	}
+
 	return nil
 }
 
 // ListMcpServers returns all registered MCP servers.
 func (m *MCPService) ListMcpServers() ([]model.McpServer, error) {
 	var servers []model.McpServer
-	if err := m.db.Find(&servers).Error; err != nil {
+
+	err := m.db.Find(&servers).Error
+	if err != nil {
 		return nil, err
 	}
+
 	return servers, nil
 }
 
 // GetMcpServer fetches a server from the database by name.
 func (m *MCPService) GetMcpServer(name string) (*model.McpServer, error) {
 	var serverModel model.McpServer
-	if err := m.db.Where("name = ?", name).First(&serverModel).Error; err != nil {
+
+	err := m.db.Where("name = ?", name).First(&serverModel).Error
+	if err != nil {
 		return nil, err
 	}
+
 	return &serverModel, nil
 }

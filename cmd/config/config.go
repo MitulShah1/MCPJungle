@@ -1,9 +1,11 @@
+// Package config provides configuration management functionality.
 package config
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 const ClientConfigFileName = ".mcpjungle.conf"
@@ -21,6 +23,7 @@ func AbsPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(home, ClientConfigFileName), nil
 }
 
@@ -31,6 +34,7 @@ func Save(c *ClientConfig) error {
 	if err != nil {
 		return err
 	}
+
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -39,6 +43,7 @@ func Save(c *ClientConfig) error {
 
 	encoder := yaml.NewEncoder(f)
 	defer encoder.Close()
+
 	return encoder.Encode(c)
 }
 

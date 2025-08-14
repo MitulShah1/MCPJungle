@@ -1,8 +1,10 @@
+// Package model provides data models for MCPJungle.
 package model
 
 import (
 	"encoding/json"
 	"errors"
+
 	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -33,14 +35,14 @@ type StdioConfig struct {
 type McpServer struct {
 	gorm.Model
 
-	Name      string                   `json:"name" gorm:"uniqueIndex;not null"`
-	Transport types.McpServerTransport `json:"transport" gorm:"type:varchar(30);not null"`
+	Name      string                   `gorm:"uniqueIndex;not null"      json:"name"`
+	Transport types.McpServerTransport `gorm:"type:varchar(30);not null" json:"transport"`
 
 	Description string `json:"description"`
 
 	// Config describes the transport-specific configuration for the MCP server.
 	// It contains the JSON representation of either StreamableHTTPConfig or StdioConfig.
-	Config datatypes.JSON `json:"config" gorm:"type:jsonb;not null"`
+	Config datatypes.JSON `gorm:"type:jsonb;not null" json:"config"`
 }
 
 // NewStreamableHTTPServer creates a new MCP server with streamable HTTP transport configuration.
@@ -48,14 +50,17 @@ func NewStreamableHTTPServer(name, description, url, bearerToken string) (*McpSe
 	if url == "" {
 		return nil, errors.New("url is required for streamable HTTP transport")
 	}
+
 	config := StreamableHTTPConfig{
 		URL:         url,
 		BearerToken: bearerToken,
 	}
+
 	configJSON, err := json.Marshal(config)
 	if err != nil {
 		return nil, err
 	}
+
 	return &McpServer{
 		Name:        name,
 		Description: description,
@@ -69,11 +74,13 @@ func NewStdioServer(name, description, command string, args []string, env map[st
 	if command == "" {
 		return nil, errors.New("command is required for stdio transport")
 	}
+
 	config := StdioConfig{
 		Command: command,
 		Args:    args,
 		Env:     env,
 	}
+
 	configJSON, err := json.Marshal(config)
 	if err != nil {
 		return nil, err
@@ -92,10 +99,14 @@ func (s *McpServer) GetStreamableHTTPConfig() (*StreamableHTTPConfig, error) {
 	if s.Transport != types.TransportStreamableHTTP {
 		return nil, errors.New("server is not a streamable HTTP transport type")
 	}
+
 	var config StreamableHTTPConfig
-	if err := json.Unmarshal(s.Config, &config); err != nil {
+
+	err := json.Unmarshal(s.Config, &config)
+	if err != nil {
 		return nil, err
 	}
+
 	return &config, nil
 }
 
@@ -104,9 +115,13 @@ func (s *McpServer) GetStdioConfig() (*StdioConfig, error) {
 	if s.Transport != types.TransportStdio {
 		return nil, errors.New("server is not a stdio transport type")
 	}
+
 	var config StdioConfig
-	if err := json.Unmarshal(s.Config, &config); err != nil {
+
+	err := json.Unmarshal(s.Config, &config)
+	if err != nil {
 		return nil, err
 	}
+
 	return &config, nil
 }

@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+
 	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var (
@@ -32,10 +34,10 @@ var registerMCPServerCmd = &cobra.Command{
 		}
 		// Otherwise, validate required flags
 		if registerCmdServerName == "" {
-			return fmt.Errorf("either supply a configuration file or set the required flag \"name\"")
+			return errors.New("either supply a configuration file or set the required flag \"name\"")
 		}
 		if registerCmdServerURL == "" {
-			return fmt.Errorf("required flag \"url\" not set")
+			return errors.New("required flag \"url\" not set")
 		}
 		return nil
 	},
@@ -111,6 +113,7 @@ func runRegisterMCPServer(cmd *cobra.Command, args []string) error {
 	} else {
 		// If a config file is provided, read the configuration from the file
 		var err error
+
 		input, err = readMcpServerConfig(registerCmdServerConfigFilePath)
 		if err != nil {
 			return err
@@ -121,15 +124,18 @@ func runRegisterMCPServer(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to register server: %w", err)
 	}
+
 	fmt.Printf("Server %s registered successfully!\n", s.Name)
 
 	tools, err := apiClient.ListTools(s.Name)
 	if err != nil {
 		// if we fail to fetch tool list, fail silently because this is not a must-have output
-		return nil
+		return err
 	}
+
 	fmt.Println()
 	fmt.Println("The following tools are now available from this server:")
+
 	for i, tool := range tools {
 		fmt.Printf("%d. %s: %s\n\n", i, tool.Name, tool.Description)
 	}

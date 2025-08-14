@@ -1,3 +1,4 @@
+// Package mcp provides MCP (Model Context Protocol) service functionality.
 package mcp
 
 import (
@@ -5,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mark3labs/mcp-go/client"
-	"github.com/mark3labs/mcp-go/client/transport"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mcpjungle/mcpjungle/internal/model"
-	"github.com/mcpjungle/mcpjungle/pkg/types"
 	"io"
 	"log"
 	"net"
@@ -19,6 +15,12 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mcpjungle/mcpjungle/internal/model"
+	"github.com/mcpjungle/mcpjungle/pkg/types"
 )
 
 // serverInitRequestTimeout is the timeout (in seconds) for the initialization request to the MCP server
@@ -40,12 +42,15 @@ func validateServerName(name string) error {
 	if name == "" {
 		return fmt.Errorf("invalid server name: '%s' must not be empty", name)
 	}
+
 	if !validServerName.MatchString(name) {
 		return fmt.Errorf("invalid server name: '%s' must follow the regular expression %s", name, validServerName)
 	}
+
 	if strings.Contains(name, serverToolNameSep) {
 		return fmt.Errorf("invalid server name: '%s' must not contain multiple consecutive underscores", name)
 	}
+
 	if strings.HasSuffix(name, string(serverToolNameSep[0])) {
 		// Don't allow a trailing underscore in server name.
 		// This avoids situations like this: `aws_` + `ec2_create_sg` -> `aws___ec2_create_sg`
@@ -53,6 +58,7 @@ func validateServerName(name string) error {
 		//  the first occurrence of `__`
 		return fmt.Errorf("invalid server name: '%s' must not end with an underscore", name)
 	}
+
 	return nil
 }
 
@@ -73,14 +79,17 @@ func isLoopbackURL(rawURL string) bool {
 	if err != nil {
 		return false // invalid URL, cannot determine loopback
 	}
+
 	host := u.Hostname()
 
 	if host == "" {
 		return false // no host, not a loopback
 	}
+
 	if strings.EqualFold(host, "localhost") {
 		return true
 	}
+
 	if ip := net.ParseIP(host); ip != nil {
 		return ip.IsLoopback()
 	}
@@ -96,11 +105,14 @@ func convertToolModelToMcpObject(t *model.Tool) (mcp.Tool, error) {
 	}
 
 	var inputSchema mcp.ToolInputSchema
-	if err := json.Unmarshal(t.InputSchema, &inputSchema); err != nil {
+
+	err := json.Unmarshal(t.InputSchema, &inputSchema)
+	if err != nil {
 		return mcp.Tool{}, fmt.Errorf(
 			"failed to unmarshal input schema %s for tool %s: %w", t.InputSchema, t.Name, err,
 		)
 	}
+
 	mcpTool.InputSchema = inputSchema
 
 	// TODO: Add other attributes to the tool, such as annotations
@@ -146,6 +158,7 @@ func createHTTPMcpServerConn(ctx context.Context, s *model.McpServer) (*client.C
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, fmt.Errorf("initialization request to MCP server timed out after %d seconds", serverInitRequestTimeout)
 		}
+
 		if errors.Is(err, syscall.ECONNREFUSED) && isLoopbackURL(conf.URL) {
 			return nil, fmt.Errorf(
 				"connection to the MCP server %s was refused. "+
@@ -153,6 +166,7 @@ func createHTTPMcpServerConn(ctx context.Context, s *model.McpServer) (*client.C
 				conf.URL,
 			)
 		}
+
 		return nil, fmt.Errorf("failed to initialize connection with MCP server: %w", err)
 	}
 
@@ -175,9 +189,12 @@ func captureStdioServerStderr(name string, c *client.Client) {
 				} else {
 					log.Printf("['%s' MCP STDERR] Error reading stderr: %v", name, err)
 				}
+
 				log.Printf("['%s' MCP server] [DEBUG] exiting goroutine", name)
+
 				break
 			}
+
 			if n > 0 {
 				log.Printf("['%s' MCP STDERR] %s", name, string(buf[:n]))
 			}
@@ -194,6 +211,7 @@ func runStdioServer(ctx context.Context, s *model.McpServer) (*client.Client, er
 
 	// Convert the environment map to a slice of strings in the format "KEY=VALUE"
 	envVars := make([]string, 0)
+
 	if conf.Env != nil {
 		for k, v := range conf.Env {
 			envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
@@ -229,6 +247,7 @@ func runStdioServer(ctx context.Context, s *model.McpServer) (*client.Client, er
 				serverInitRequestTimeout,
 			)
 		}
+
 		return nil, fmt.Errorf("failed to initialize connection with MCP server: %w", err)
 	}
 
@@ -243,6 +262,7 @@ func newMcpServerSession(ctx context.Context, s *model.McpServer) (*client.Clien
 				"failed to create connection to streamable http MCP server %s: %w", s.Name, err,
 			)
 		}
+
 		return mcpClient, nil
 	}
 
@@ -254,5 +274,6 @@ func newMcpServerSession(ctx context.Context, s *model.McpServer) (*client.Clien
 	if err != nil {
 		return nil, fmt.Errorf("failed to run stdio MCP server %s: %w", s.Name, err)
 	}
+
 	return mcpClient, nil
 }

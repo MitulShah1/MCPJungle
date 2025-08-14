@@ -1,8 +1,10 @@
+// Package config provides server configuration management functionality.
 package config
 
 import (
 	"errors"
 	"fmt"
+
 	"github.com/mcpjungle/mcpjungle/internal/model"
 	"gorm.io/gorm"
 )
@@ -20,13 +22,16 @@ func NewServerConfigService(db *gorm.DB) *ServerConfigService {
 // If no configuration exists, it returns a default uninitialized config.
 func (s *ServerConfigService) GetConfig() (model.ServerConfig, error) {
 	var config model.ServerConfig
+
 	err := s.db.First(&config).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return model.ServerConfig{Initialized: false}, nil
 	}
+
 	if err != nil {
 		return model.ServerConfig{}, fmt.Errorf("failed to fetch server configuration from db: %v", err)
 	}
+
 	return config, nil
 }
 
@@ -38,6 +43,7 @@ func (s *ServerConfigService) Init(mode model.ServerMode) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	if config.Initialized {
 		// Config already exists, do nothing
 		return false, nil
@@ -47,5 +53,6 @@ func (s *ServerConfigService) Init(mode model.ServerMode) (bool, error) {
 		Mode:        mode,
 		Initialized: true,
 	}
+
 	return true, s.db.Create(&config).Error
 }

@@ -1,7 +1,9 @@
+// Package cmd provides command-line interface functionality for MCPJungle.
 package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 

@@ -11,7 +11,7 @@ const UserRoleAdmin UserRole = "admin"
 type User struct {
 	gorm.Model
 
-	Username    string   `json:"username" gorm:"unique; not null"`
-	Role        UserRole `json:"role" gorm:"not null"`
-	AccessToken string   `json:"access_token" gorm:"unique; not null"`
+	Username    string   `gorm:"unique; not null" json:"username"`
+	Role        UserRole `gorm:"not null"         json:"role"`
+	AccessToken string   `gorm:"unique; not null" json:"access_token"`
 }
