@@ -71,9 +71,7 @@ func registerServerHandler(mcpService *mcp.MCPService) gin.HandlerFunc {
 func deregisterServerHandler(mcpService *mcp.MCPService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := c.Param("name")
-
-		err := mcpService.DeregisterMcpServer(name)
-		if err != nil {
+		if err := mcpService.DeregisterMcpServer(name); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

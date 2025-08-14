@@ -167,8 +167,7 @@ func runStartServer(cmd *cobra.Command, args []string) error {
 		// If server isn't already initialized and the desired mode is dev, silently initialize the server.
 		// Individual (dev mode) users need not worry about server initialization.
 		if desiredMode == model.ModeDev {
-			err := s.InitDev()
-			if err != nil {
+			if err := s.InitDev(); err != nil {
 				return fmt.Errorf("failed to initialize server in development mode: %v", err)
 			}
 		} else {
