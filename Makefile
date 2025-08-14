@@ -159,32 +159,6 @@ docker-compose-up: ## Start services with docker-compose
 docker-compose-down: ## Stop services with docker-compose
 	docker-compose down
 
-# Development workflow
-.PHONY: dev-setup
-dev-setup: ## Setup development environment
-	@echo "Setting up development environment..."
-	$(MAKE) install-tools
-	$(MAKE) deps
-	$(MAKE) fmt
-
-.PHONY: pre-commit
-pre-commit: ## Run pre-commit checks
-	@echo "Running pre-commit checks..."
-	$(MAKE) fmt-check
-	$(MAKE) vet
-	$(MAKE) golangci-lint
-	$(MAKE) test
-
-.PHONY: ci
-ci: ## Run CI checks
-	@echo "Running CI checks..."
-	$(MAKE) deps
-	$(MAKE) fmt-check
-	$(MAKE) vet
-	$(MAKE) golangci-lint
-	$(MAKE) test-coverage
-	$(MAKE) build
-
 # Utility targets
 .PHONY: run
 run: ## Run the application
@@ -201,35 +175,6 @@ version: ## Show version information
 	@echo "Module info:"
 	$(GOCMD) list -m
 
-# Security targets
-.PHONY: security-check
-security-check: ## Run security checks
-	@echo "Running security checks..."
-	@if command -v gosec > /dev/null; then \
-		gosec ./...; \
-	else \
-		echo "gosec not installed. Install with: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest"; \
-	fi
-
-# Performance targets
-.PHONY: bench
-bench: ## Run benchmarks
-	$(GOTEST) -bench=. -benchmem ./...
-
-.PHONY: profile
-profile: ## Generate CPU profile
-	$(GOTEST) -cpuprofile=cpu.prof -bench=. ./...
-
-# Documentation targets
-.PHONY: docs
-docs: ## Generate documentation
-	@echo "Generating documentation..."
-	@if command -v godoc > /dev/null; then \
-		godoc -http=:6060; \
-	else \
-		echo "godoc not installed. Install with: go install golang.org/x/tools/cmd/godoc@latest"; \
-	fi
-
 # Cleanup targets
 .PHONY: clean-all
 clean-all: clean ## Clean everything including vendor and coverage files
@@ -237,16 +182,3 @@ clean-all: clean ## Clean everything including vendor and coverage files
 	rm -f coverage.out coverage.html
 	rm -f *.prof
 	rm -f *.out
-
-# Show targets
-.PHONY: show-deps
-show-deps: ## Show dependency tree
-	$(GOCMD) mod graph
-
-.PHONY: show-licenses
-show-licenses: ## Show licenses of dependencies
-	@if command -v go-licenses > /dev/null; then \
-		go-licenses csv ./...; \
-	else \
-		echo "go-licenses not installed. Install with: go install github.com/google/go-licenses@latest"; \
-	fi 
